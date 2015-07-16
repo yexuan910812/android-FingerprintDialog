@@ -120,7 +120,7 @@ public class FingerprintUiHelper extends FingerprintManager.AuthenticationCallba
     }
 
     @Override
-    public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
+    public void onAuthenticationSucceeded(final FingerprintManager.AuthenticationResult result) {
         mErrorTextView.removeCallbacks(mResetErrorTextRunnable);
         mIcon.setImageResource(R.drawable.ic_fingerprint_success);
         mErrorTextView.setTextColor(
@@ -130,7 +130,7 @@ public class FingerprintUiHelper extends FingerprintManager.AuthenticationCallba
         mIcon.postDelayed(new Runnable() {
             @Override
             public void run() {
-                mCallback.onAuthenticated();
+                mCallback.onAuthenticated(result);
             }
         }, SUCCESS_DELAY_MILLIS);
     }
@@ -158,7 +158,7 @@ public class FingerprintUiHelper extends FingerprintManager.AuthenticationCallba
 
     public interface Callback {
 
-        void onAuthenticated();
+        void onAuthenticated(FingerprintManager.AuthenticationResult result);
 
         void onError();
     }

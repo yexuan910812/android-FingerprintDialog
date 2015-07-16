@@ -181,7 +181,7 @@ public class FingerprintAuthenticationDialogFragment extends DialogFragment
             }
         }
         mPassword.setText("");
-        ((MainActivity) getActivity()).onPurchased(false /* without Fingerprint */);
+        ((MainActivity) getActivity()).onPurchased(false , null/* without Fingerprint */);
         dismiss();
     }
 
@@ -235,10 +235,10 @@ public class FingerprintAuthenticationDialogFragment extends DialogFragment
     }
 
     @Override
-    public void onAuthenticated() {
+    public void onAuthenticated(FingerprintManager.AuthenticationResult result) {
         // Callback from FingerprintUiHelper. Let the activity know that authentication was
         // successful.
-        ((MainActivity) getActivity()).onPurchased(true /* withFingerprint */);
+        ((MainActivity) getActivity()).onPurchased(true , result/* withFingerprint */);
         dismiss();
     }
 

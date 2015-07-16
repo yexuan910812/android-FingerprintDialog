@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items version="2" >
+
+    <item
+        jar="/Users/yexuan/Documents/developement/android_resource/android-FingerprintDialogMyEdition/Application/build/intermediates/exploded-aar/com.android.support/support-v4/22.2.0/jars/classes.jar"
+        jumboMode="false"
+        revision="22.0.1"
+        sha1="1ee588ff2c4daf7b97c1cbf922a6c7f027285c2f">
+        <dex dex="/Users/yexuan/Documents/developement/android_resource/android-FingerprintDialogMyEdition/Application/build/intermediates/pre-dexed/debug/classes-b7de43a912b4ebe2eec2e0d5647525415d46fd81.jar" />
+    </item>
+    <item
+        jar="/Users/yexuan/Documents/developement/android_resource/android-FingerprintDialogMyEdition/Application/build/intermediates/exploded-aar/com.android.support/cardview-v7/22.2.0/jars/classes.jar"
+        jumboMode="false"
+        revision="22.0.1"
+        sha1="97f7e239e86ef994de894818fdd8a71d2e89d6aa">
+        <dex dex="/Users/yexuan/Documents/developement/android_resource/android-FingerprintDialogMyEdition/Application/build/intermediates/pre-dexed/debug/classes-5ea1c6e7ad98619222b9dae742e68982f16bdf16.jar" />
+    </item>
+    <item
+        jar="/Users/yexuan/Documents/developement/android_resource/android-FingerprintDialogMyEdition/Application/build/intermediates/exploded-aar/com.android.support/support-v13/22.2.0/jars/libs/internal_impl-22.2.0.jar"
+        jumboMode="false"
+        revision="22.0.1"
+        sha1="79a5b6d9fbab3b5fb4c6f86a1ed7a17722fd937b">
+        <dex dex="/Users/yexuan/Documents/developement/android_resource/android-FingerprintDialogMyEdition/Application/build/intermediates/pre-dexed/debug/internal_impl-22.2.0-05000686e9ce902719d514eed3c6c3e5747a6cdc.jar" />
+    </item>
+    <item
+        jar="/Users/yexuan/Documents/developement/android_resource/android-FingerprintDialogMyEdition/Application/build/intermediates/exploded-aar/com.android.support/support-v13/22.2.0/jars/classes.jar"
+        jumboMode="false"
+        revision="22.0.1"
+        sha1="9aa93835393824b436f366120c9ba8a0260ce75d">
+        <dex dex="/Users/yexuan/Documents/developement/android_resource/android-FingerprintDialogMyEdition/Application/build/intermediates/pre-dexed/debug/classes-2d6507bafaa9087f8693a145df6b195b9f3031f0.jar" />
+    </item>
+    <item
+        jar="/Users/yexuan/Documents/developement/android_resource/android-FingerprintDialogMyEdition/Application/build/intermediates/exploded-aar/com.android.support/support-v4/22.2.0/jars/libs/internal_impl-22.2.0.jar"
+        jumboMode="false"
+        revision="22.0.1"
+        sha1="57f2ab85c164ff1676ec64dee787981c046fab79">
+        <dex dex="/Users/yexuan/Documents/developement/android_resource/android-FingerprintDialogMyEdition/Application/build/intermediates/pre-dexed/debug/internal_impl-22.2.0-480af5979e25013e5b7f255844c550b5dfbb140e.jar" />
+    </item>
+    <item
+        jar="/Users/yexuan/android_env/extras/android/m2repository/com/android/support/support-annotations/22.2.0/support-annotations-22.2.0.jar"
+        jumboMode="false"
+        revision="22.0.1"
+        sha1="66b42a1f3eb7676070b7ef7f14b603483aecbee1">
+        <dex dex="/Users/yexuan/Documents/developement/android_resource/android-FingerprintDialogMyEdition/Application/build/intermediates/pre-dexed/debug/support-annotations-22.2.0-246ba63f5c71fb80a57e788df210a3ab355e6b4d.jar" />
+    </item>
+
+</items>

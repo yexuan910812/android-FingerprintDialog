@@ -24,10 +24,12 @@ import android.preference.PreferenceManager;
 import android.security.keystore.KeyProperties;
 import android.view.inputmethod.InputMethodManager;
 
+import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.Signature;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -76,22 +78,20 @@ public class FingerprintModule {
     }
 
     @Provides
-    public KeyGenerator providesKeyGenerator() {
+    public KeyPairGenerator providesKeyGenerator() {
         try {
-            return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+            return KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore");
         } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
             throw new RuntimeException("Failed to get an instance of KeyGenerator", e);
         }
     }
 
     @Provides
-    public Cipher providesCipher(KeyStore keyStore) {
+    public Signature providesCipher(KeyStore keyStore) {
         try {
-            return Cipher.getInstance(KeyProperties.KEY_ALGORITHM_AES + "/"
-                    + KeyProperties.BLOCK_MODE_CBC + "/"
-                    + KeyProperties.ENCRYPTION_PADDING_PKCS7);
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
-            throw new RuntimeException("Failed to get an instance of Cipher", e);
+            return Signature.getInstance("SHA256withRSA");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Failed to get an instance of Signature", e);
         }
     }
 

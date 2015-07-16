@@ -19,11 +19,13 @@ package com.example.android.fingerprintdialog;
 import android.Manifest;
 import android.app.Activity;
 import android.app.KeyguardManager;
+import android.app.Notification;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.Bundle;
+import android.security.KeyPairGeneratorSpec;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.security.keystore.KeyProperties;
@@ -37,13 +39,27 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.UnrecoverableEntryException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import java.security.interfaces.RSAKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -51,6 +67,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.inject.Inject;
+import javax.security.auth.x500.X500Principal;
 
 /**
  * Main entry point for the sample, showing a backpack and "Purchase" button.
@@ -61,17 +78,27 @@ public class MainActivity extends Activity {
 
     private static final String DIALOG_FRAGMENT_TAG = "myFragment";
     private static final String SECRET_MESSAGE = "Very secret message";
-    /** Alias for our key in the Android Key Store */
+    /**
+     * Alias for our key in the Android Key Store
+     */
     private static final String KEY_NAME = "my_key";
 
     private static final int FINGERPRINT_PERMISSION_REQUEST_CODE = 0;
 
-    @Inject KeyguardManager mKeyguardManager;
-    @Inject FingerprintAuthenticationDialogFragment mFragment;
-    @Inject KeyStore mKeyStore;
-    @Inject KeyGenerator mKeyGenerator;
-    @Inject Cipher mCipher;
-    @Inject SharedPreferences mSharedPreferences;
+//    private KeyPair pair = null;
+
+    @Inject
+    KeyguardManager mKeyguardManager;
+    @Inject
+    FingerprintAuthenticationDialogFragment mFragment;
+    @Inject
+    KeyStore mKeyStore;
+    @Inject
+    KeyPairGenerator mKeyGenerator;
+    @Inject
+    Signature mSignature;
+    @Inject
+    SharedPreferences mSharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,7 +140,7 @@ public class MainActivity extends Activity {
 
                         // Show the fingerprint dialog. The user has the option to use the fingerprint with
                         // crypto, or you can fall back to using a server-side verified password.
-                        mFragment.setCryptoObject(new FingerprintManager.CryptoObject(mCipher));
+                        mFragment.setCryptoObject(new FingerprintManager.CryptoObject(mSignature));
                         boolean useFingerprintPreference = mSharedPreferences
                                 .getBoolean(getString(R.string.use_fingerprint_to_authenticate_key),
                                         true);
@@ -125,12 +152,13 @@ public class MainActivity extends Activity {
                                     FingerprintAuthenticationDialogFragment.Stage.PASSWORD);
                         }
                         mFragment.show(getFragmentManager(), DIALOG_FRAGMENT_TAG);
+//                        tryEncrypt();
                     } else {
                         // This happens if the lock screen has been disabled or or a fingerprint got
                         // enrolled. Thus show the dialog to authenticate with their password first
                         // and ask the user if they want to authenticate with fingerprints in the
                         // future
-                        mFragment.setCryptoObject(new FingerprintManager.CryptoObject(mCipher));
+                        mFragment.setCryptoObject(new FingerprintManager.CryptoObject(mSignature));
                         mFragment.setStage(
                                 FingerprintAuthenticationDialogFragment.Stage.NEW_FINGERPRINT_ENROLLED);
                         mFragment.show(getFragmentManager(), DIALOG_FRAGMENT_TAG);
@@ -151,18 +179,26 @@ public class MainActivity extends Activity {
     private boolean initCipher() {
         try {
             mKeyStore.load(null);
-            SecretKey key = (SecretKey) mKeyStore.getKey(KEY_NAME, null);
-            mCipher.init(Cipher.ENCRYPT_MODE, key);
+            PrivateKey key = ((KeyStore.PrivateKeyEntry)(mKeyStore.getEntry(KEY_NAME, null))).getPrivateKey();
+//            mSignature.update(SECRET_MESSAGE.getBytes());
+            mSignature.initSign(key);
+//            mSignature.update(SECRET_MESSAGE.getBytes());
             return true;
         } catch (KeyPermanentlyInvalidatedException e) {
             return false;
-        } catch (KeyStoreException | CertificateException | UnrecoverableKeyException | IOException
+        } catch (CertificateException | IOException
                 | NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new RuntimeException("Failed to init Cipher", e);
+        } catch (UnrecoverableEntryException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to init Cipher", e);
+        } catch (KeyStoreException e) {
+            e.printStackTrace();
             throw new RuntimeException("Failed to init Cipher", e);
         }
     }
 
-    public void onPurchased(boolean withFingerprint) {
+    public void onPurchased(boolean withFingerprint, FingerprintManager.AuthenticationResult result) {
         if (withFingerprint) {
             // If the user has authenticated with fingerprint, verify that using cryptography and
             // then show the confirmation message.
@@ -174,12 +210,19 @@ public class MainActivity extends Activity {
     }
 
     // Show confirmation, if fingerprint was used show crypto information.
-    private void showConfirmation(byte[] encrypted) {
+    private void showConfirmation(byte[] signed) {
         findViewById(R.id.confirmation_message).setVisibility(View.VISIBLE);
-        if (encrypted != null) {
+        if (signed != null) {
             TextView v = (TextView) findViewById(R.id.encrypted_message);
             v.setVisibility(View.VISIBLE);
-            v.setText(Base64.encodeToString(encrypted, 0 /* flags */));
+            //signed
+//            v.setText(Base64.encodeToString(signed, 0 /* flags */));
+            //verified
+            try {
+                v.setText("" + verifyData(SECRET_MESSAGE, Base64.encodeToString(signed, 0 /* flags */)));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -189,13 +232,36 @@ public class MainActivity extends Activity {
      */
     private void tryEncrypt() {
         try {
-            byte[] encrypted = mCipher.doFinal(SECRET_MESSAGE.getBytes());
-            showConfirmation(encrypted);
-        } catch (BadPaddingException | IllegalBlockSizeException e) {
+            //test another Signature
+//            byte[] signed = testAttackByAnother();
+//            test end
+//            mSignature = result.getCryptoObject().getSignature();
+            mSignature.update(SECRET_MESSAGE.getBytes());
+            byte[] signed = mSignature.sign();
+//            byte[] signed = mSignature.sign(SECRET_MESSAGE.getBytes());
+            showConfirmation(signed);
+        } catch (SignatureException e) {
+            e.printStackTrace();
             Toast.makeText(this, "Failed to encrypt the data with the generated key. "
                     + "Retry the purchase", Toast.LENGTH_LONG).show();
-            Log.e(TAG, "Failed to encrypt the data with the generated key." + e.getMessage());
+//            Log.e(TAG, "Failed to encrypt the data with the generated key." + e.getMessage());
         }
+    }
+
+    private byte[] testAttackByAnother() {
+        try {
+            KeyStore fakeStore = KeyStore.getInstance("AndroidKeyStore");
+            fakeStore.load(null);
+            PrivateKey key = (PrivateKey) fakeStore.getKey(KEY_NAME, null);
+//            mSignature.update(SECRET_MESSAGE.getBytes());
+            Signature s = Signature.getInstance("SHA256withRSA");
+            s.initSign(key);
+            s.update(SECRET_MESSAGE.getBytes());
+            return s.sign();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**
@@ -213,16 +279,35 @@ public class MainActivity extends Activity {
             mKeyStore.load(null);
             // Set the alias of the entry in Android KeyStore where the key will appear
             // and the constrains (purposes) in the constructor of the Builder
-            mKeyGenerator.init(new KeyGenParameterSpec.Builder(KEY_NAME,
-                    KeyProperties.PURPOSE_ENCRYPT |
-                            KeyProperties.PURPOSE_DECRYPT)
-                    .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-                            // Require the user to authenticate with a fingerprint to authorize every use
-                            // of the key
-                    .setUserAuthenticationRequired(true)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
-                    .build());
-            mKeyGenerator.generateKey();
+//            Calendar start = new GregorianCalendar();
+//            Calendar end = new GregorianCalendar();
+//            end.add(Calendar.YEAR, 1);
+            //END_INCLUDE(create_valid_dates)
+
+
+            // BEGIN_INCLUDE(create_spec)
+            // The KeyPairGeneratorSpec object is how parameters for your key pair are passed
+            // to the KeyPairGenerator.  For a fun home game, count how many classes in this sample
+            // start with the phrase "KeyPair".
+
+            KeyGenParameterSpec spec =
+                    new KeyGenParameterSpec.Builder(KEY_NAME, KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
+                            // You'll use the alias later to retrieve the key.  It's a key for the key!
+                                    // The subject used for the self-signed certificate of the generated pair
+
+                            .setDigests(KeyProperties.DIGEST_SHA256,
+                                    KeyProperties.DIGEST_SHA384,
+                                    KeyProperties.DIGEST_SHA512)
+                                    // Date range of validity for the generated pair.
+                            .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+//                            .setKeyValidityStart(start.getTime())
+//                            .setKeyValidityEnd(end.getTime())
+                            .setUserAuthenticationRequired(true)
+//                            .setUserAuthenticationValidityDurationSeconds(1 * 60)
+                            .build();
+            mKeyGenerator.initialize(spec);
+            mKeyGenerator.generateKeyPair();
+//            mKeyGenerator.generateKey();
             return true;
         } catch (IllegalStateException e) {
             // This happens when no fingerprints are registered.
@@ -234,6 +319,74 @@ public class MainActivity extends Activity {
                 | CertificateException | IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Given some data and a signature, uses the key pair stored in the Android Key Store to verify
+     * that the data was signed by this application, using that key pair.
+     *
+     * @param input        The data to be verified.
+     * @param signatureStr The signature provided for the data.
+     * @return A boolean value telling you whether the signature is valid or not.
+     */
+    public boolean verifyData(String input, String signatureStr) throws KeyStoreException,
+            CertificateException, NoSuchAlgorithmException, IOException,
+            UnrecoverableEntryException, InvalidKeyException, SignatureException {
+        byte[] data = input.getBytes();
+        byte[] signature;
+        // BEGIN_INCLUDE(decode_signature)
+
+        // Make sure the signature string exists.  If not, bail out, nothing to do.
+
+        if (signatureStr == null) {
+            Log.w(TAG, "Invalid signature.");
+            Log.w(TAG, "Exiting verifyData()...");
+            return false;
+        }
+
+        try {
+            // The signature is going to be examined as a byte array,
+            // not as a base64 encoded string.
+            signature = Base64.decode(signatureStr, Base64.DEFAULT);
+        } catch (IllegalArgumentException e) {
+            // signatureStr wasn't null, but might not have been encoded properly.
+            // It's not a valid Base64 string.
+            return false;
+        }
+        // END_INCLUDE(decode_signature)
+
+        KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+
+        // Weird artifact of Java API.  If you don't have an InputStream to load, you still need
+        // to call "load", or it'll crash.
+        ks.load(null);
+
+        // Load the key pair from the Android Key Store
+        KeyStore.Entry entry = ks.getEntry(KEY_NAME, null);
+
+        if (entry == null) {
+            Log.w(TAG, "No key found under alias: " + KEY_NAME);
+            Log.w(TAG, "Exiting verifyData()...");
+            return false;
+        }
+
+        if (!(entry instanceof KeyStore.PrivateKeyEntry)) {
+            Log.w(TAG, "Not an instance of a PrivateKeyEntry");
+            return false;
+        }
+
+        // This class doesn't actually represent the signature,
+        // just the engine for creating/verifying signatures, using
+        // the specified algorithm.
+        Signature s = Signature.getInstance("SHA256withRSA");
+
+        // BEGIN_INCLUDE(verify_data)
+        // Verify the data.
+        s.initVerify(((KeyStore.PrivateKeyEntry) entry).getCertificate());
+        s.update(data);
+        boolean valid = s.verify(signature);
+        return valid;
+        // END_INCLUDE(verify_data)
     }
 
     @Override
